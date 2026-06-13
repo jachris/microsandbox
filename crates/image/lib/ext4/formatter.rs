@@ -35,8 +35,14 @@ use windows_sys::Win32::System::Ioctl::FSCTL_SET_SPARSE;
 // Constants
 //--------------------------------------------------------------------------------------------------
 
-/// Default image size: 4 GiB.
-const DEFAULT_SIZE_BYTES: u64 = 4 * 1024 * 1024 * 1024;
+/// Default image size: 128 GiB.
+///
+/// The image is sparse, so the on-disk footprint stays at the few MiB of
+/// metadata the formatter actually writes; the logical size only caps how
+/// much the guest can write into the writable overlay before it sees ENOSPC.
+/// The formatter derives the block-group count from this size, and 128 GiB
+/// stays well under `MAX_BLOCKS` (the 32-bit physical-block ceiling).
+const DEFAULT_SIZE_BYTES: u64 = 128 * 1024 * 1024 * 1024;
 
 /// Default journal size in blocks (64 MiB at 4 KiB/block = 16384 blocks).
 const DEFAULT_JOURNAL_BLOCKS: u32 = 16384;
@@ -67,7 +73,7 @@ const JBD2_SUPERBLOCK_SIZE: usize = 1024;
 /// Options for creating an ext4 filesystem image.
 pub struct Ext4FormatOptions {
     /// Total image size in bytes. Must be large enough to hold metadata and
-    /// journal. Defaults to 4 GiB.
+    /// journal. Defaults to 128 GiB.
     pub size_bytes: u64,
 
     /// Number of 4 KiB blocks to allocate for the journal.

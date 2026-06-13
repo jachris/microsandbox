@@ -12,8 +12,8 @@ use crate::path_bytes::os_string_from_bytes;
 // Constants
 //--------------------------------------------------------------------------------------------------
 
-const DEFAULT_MAX_TOTAL_SIZE: u64 = 10 * 1024 * 1024 * 1024; // 10 GiB
-const DEFAULT_MAX_FILE_SIZE: u64 = 5 * 1024 * 1024 * 1024; // 5 GiB
+const DEFAULT_MAX_TOTAL_SIZE: u64 = 128 * 1024 * 1024 * 1024; // 128 GiB
+const DEFAULT_MAX_FILE_SIZE: u64 = 32 * 1024 * 1024 * 1024; // 32 GiB
 const DEFAULT_MAX_ENTRY_COUNT: u64 = 1_000_000;
 const DEFAULT_MAX_PATH_LENGTH: usize = 4096;
 const DEFAULT_MAX_PATH_DEPTH: usize = 128;
@@ -1066,8 +1066,8 @@ mod tests {
     #[test]
     fn resource_limits_default() {
         let limits = ResourceLimits::default();
-        assert_eq!(limits.max_total_size, 10 * 1024 * 1024 * 1024);
-        assert_eq!(limits.max_file_size, 5 * 1024 * 1024 * 1024);
+        assert_eq!(limits.max_total_size, 128 * 1024 * 1024 * 1024);
+        assert_eq!(limits.max_file_size, 32 * 1024 * 1024 * 1024);
         assert_eq!(limits.max_entry_count, 1_000_000);
         assert_eq!(limits.max_path_length, 4096);
         assert_eq!(limits.max_path_depth, 128);

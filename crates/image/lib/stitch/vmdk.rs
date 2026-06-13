@@ -2,21 +2,16 @@ use std::io::{self, Write};
 use std::path::Path;
 
 //--------------------------------------------------------------------------------------------------
-// Constants
-//--------------------------------------------------------------------------------------------------
-
-/// Maximum sectors per VMDK extent line (2 GiB / 512 bytes).
-const MAX_EXTENT_SECTORS: u64 = 4_194_304;
-
-//--------------------------------------------------------------------------------------------------
 // Functions
 //--------------------------------------------------------------------------------------------------
 
 /// Write a VMDK flat descriptor that concatenates the given extent files into a
 /// single virtual disk.
 ///
-/// Each extent file must be 512-byte aligned. Files larger than 2 GiB are split
-/// into multiple extent lines with increasing offsets.
+/// Each extent file must be 512-byte aligned. One extent line is emitted per
+/// file regardless of size; we deliberately do not split at the 2 GiB boundary
+/// that `twoGbMaxExtentFlat` historically implies (see the comment in the loop
+/// for why non-zero extent offsets must be avoided).
 pub fn write_vmdk_descriptor(output: &Path, extents: &[&Path]) -> io::Result<()> {
     let mut total_sectors: u64 = 0;
     let mut extent_lines = Vec::new();
@@ -44,15 +39,15 @@ pub fn write_vmdk_descriptor(output: &Path, extents: &[&Path]) -> io::Result<()>
         let abs_path = std::fs::canonicalize(path)?;
         let abs_str = abs_path.to_string_lossy();
 
-        // Split into <= 2 GiB extent lines.
-        let mut offset: u64 = 0;
-        let mut remaining = sectors;
-        while remaining > 0 {
-            let chunk = remaining.min(MAX_EXTENT_SECTORS);
-            extent_lines.push(format!("RW {chunk} FLAT \"{abs_str}\" {offset}"));
-            offset += chunk;
-            remaining -= chunk;
-        }
+        // One extent line per file, always at file offset 0. Splitting into
+        // multiple lines past 2 GiB triggers a units-mismatch bug in imago's
+        // VMDK reader: the per-line <offset> is specified in sectors by the VMDK
+        // spec, but imago adds it directly to a byte-valued in-extent offset
+        // without converting sectors to bytes. Any non-zero <offset> in an
+        // extent line therefore silently corrupts reads past that point. Modern
+        // host filesystems handle multi-GiB files fine, so the 2 GiB cap was
+        // historical baggage we can drop to keep every offset at 0.
+        extent_lines.push(format!("RW {sectors} FLAT \"{abs_str}\" 0"));
 
         total_sectors += sectors;
     }
