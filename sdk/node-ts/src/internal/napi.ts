@@ -10,8 +10,19 @@ import { msbPath } from "./resolve-binary.js";
 const resolvedMsbPath = msbPath();
 
 const require = createRequire(import.meta.url);
+// Load the native binding. When NAPI_RS_NATIVE_LIBRARY_PATH points at a
+// prebuilt .node, require it directly: the generated loader
+// (native/index.cjs) resolves via a package-relative path, which is
+// unreachable inside a `bun build --compile` binary where this SDK is embedded
+// in a virtual filesystem — an absolute .node path loads fine there. The
+// generated loader would itself just require that same env path, so this is
+// behavior-preserving; we fall back to it when the env var is unset.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const native = require("../../native/index.cjs") as NativeBindings;
+const native = (
+  process.env.NAPI_RS_NATIVE_LIBRARY_PATH
+    ? require(process.env.NAPI_RS_NATIVE_LIBRARY_PATH)
+    : require("../../native/index.cjs")
+) as NativeBindings;
 
 if (resolvedMsbPath) native.setRuntimeMsbPath?.(resolvedMsbPath);
 
