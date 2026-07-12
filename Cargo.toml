@@ -76,8 +76,16 @@ microsandbox-network = { version = "=0.6.6", path = "crates/network" }
 microsandbox-protocol = { version = "=0.6.6", path = "crates/protocol" }
 microsandbox-runtime = { version = "=0.6.6", path = "crates/runtime", default-features = false }
 microsandbox-utils = { version = "=0.6.6", path = "crates/utils" }
-msb_krun = "=0.1.25"
-msb_krun_utils = "=0.1.25"
+# msb_krun (and its siblings msb_krun_utils/_input/_vmm) is sourced from our
+# libkrun fork (branched off the msb_krun 0.1.25 release commit). The fork's
+# only change neutralises the per-snapshot mincore(2)/K32QueryWorkingSetEx
+# host-resident-memory scan in the VMM, which froze guest<->host I/O
+# (interactive terminals) ~860 ms every metrics tick on large guests. Both the
+# umbrella crate and msb_krun_utils point at the SAME git source so the whole
+# msb_krun workspace resolves from one place (avoiding crates.io/git
+# duplicate-crate conflicts). See the fork's src/vmm/src/metrics.rs.
+msb_krun = { git = "https://github.com/jachris/libkrun", branch = "msb-patch/no-mincore-sampler-0.1.25" }
+msb_krun_utils = { git = "https://github.com/jachris/libkrun", branch = "msb-patch/no-mincore-sampler-0.1.25" }
 test-macros = { path = "crates/test-macros" }
 test-utils = { path = "crates/test-utils" }
 
