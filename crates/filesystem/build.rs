@@ -23,7 +23,19 @@ fn main() {
 
 fn build_agentd(workspace_root: &Path, out_dir: &Path) {
     let local = workspace_root.join("build").join(AGENTD_BINARY);
-    println!("cargo:rerun-if-changed={}", local.display());
+    // Cargo treats a missing `rerun-if-changed` path as permanently stale, so
+    // watching a `build/agentd` that doesn't exist (the prebuilt flow never
+    // creates it) would rerun this build script — and rebuild every dependent
+    // crate — on each invocation. Watch the file when present; otherwise watch
+    // the (created-if-missing) build/ directory, whose recursive scan picks up
+    // a later `just build-agentd` without going permanently stale.
+    if local.is_file() {
+        println!("cargo:rerun-if-changed={}", local.display());
+    } else {
+        let build_dir = local.parent().unwrap();
+        std::fs::create_dir_all(build_dir).expect("failed to create build/ directory");
+        println!("cargo:rerun-if-changed={}", build_dir.display());
+    }
 
     #[cfg(feature = "prebuilt")]
     {

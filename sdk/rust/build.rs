@@ -18,29 +18,40 @@ use microsandbox_utils::LIBKRUNFW_ABI;
 use microsandbox_utils::http_client;
 #[cfg(all(feature = "prebuilt", not(windows)))]
 use microsandbox_utils::{PREBUILT_VERSION, bundle_download_url};
+#[cfg(all(feature = "prebuilt", not(windows)))]
 use microsandbox_utils::{
     libkrunfw_filename as utils_libkrunfw_filename,
-    msb_binary_filename as utils_msb_binary_filename, resolve_home,
+    msb_binary_filename as utils_msb_binary_filename,
 };
+#[cfg(feature = "prebuilt")]
+use microsandbox_utils::resolve_home;
 
 fn main() {
     // Re-run if MSB_HOME changes - it determines where binaries are placed.
     println!("cargo:rerun-if-env-changed=MSB_HOME");
     println!("cargo:rerun-if-env-changed=HOME");
 
-    let base_dir = resolve_home();
-    // Re-run if the binaries are deleted so we can re-download.
-    println!(
-        "cargo:rerun-if-changed={}",
-        base_dir.join("bin").join(msb_binary_filename()).display()
-    );
-    println!(
-        "cargo:rerun-if-changed={}",
-        base_dir.join("lib").join(libkrunfw_filename()).display()
-    );
-
     #[cfg(feature = "prebuilt")]
-    install_prebuilt(base_dir);
+    {
+        let base_dir = resolve_home();
+        // Re-run if the binaries are deleted so we can re-download. Only with
+        // `prebuilt` (and where it actually installs, i.e. not Windows): cargo
+        // treats a missing watched path as permanently stale, so builds that
+        // never populate $MSB_HOME would otherwise rerun this script — and
+        // rebuild every dependent crate — on each invocation.
+        #[cfg(not(windows))]
+        {
+            println!(
+                "cargo:rerun-if-changed={}",
+                base_dir.join("bin").join(msb_binary_filename()).display()
+            );
+            println!(
+                "cargo:rerun-if-changed={}",
+                base_dir.join("lib").join(libkrunfw_filename()).display()
+            );
+        }
+        install_prebuilt(base_dir);
+    }
 }
 
 #[cfg(all(feature = "prebuilt", windows))]
@@ -95,10 +106,12 @@ fn install_prebuilt(base_dir: PathBuf) {
     );
 }
 
+#[cfg(all(feature = "prebuilt", not(windows)))]
 fn libkrunfw_filename() -> String {
     utils_libkrunfw_filename(std::env::consts::OS)
 }
 
+#[cfg(all(feature = "prebuilt", not(windows)))]
 fn msb_binary_filename() -> String {
     utils_msb_binary_filename(std::env::consts::OS)
 }
